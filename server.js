@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const { Redis } = require('ioredis');
 
 // Full Redis URL from Upstash
-const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYCM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
+const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYWM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
 
 // Create Redis client
 const redisClient = new Redis(redisUrl);
