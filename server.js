@@ -38,7 +38,7 @@ app.post('/login', singleUserOnly, async (req, res) => {
     if (response && response.success === true) {
       loggedInUser = email;
       lastActiveTime = Date.now();
-      res.json({ redirect: "/dashboard" }); // Change to your hosted site
+      res.json({ redirect: "/dashboard.html" }); // Change to your hosted site
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
