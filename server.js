@@ -53,7 +53,7 @@ app.post('/login', singleUserOnly, async (req, res) => {
       loggedInUser = email;
       req.session.email = email;
       req.session.lastActive = Date.now();
-      res.json({ redirect: "https://supersheet.pages.dev/" }); // Change to your hosted site
+      res.json({ redirect: "/dashboard.html" }); // Change to your hosted site
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
