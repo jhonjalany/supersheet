@@ -158,6 +158,10 @@ app.get('/dashboard', ensureAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
 });
 
+app.get('/dashboard.html', (req, res) => {
+  res.redirect('/dashboard');
+});
+
 // Optional: Periodically clean up stale sessions
 setInterval(async () => {
   const allKeys = await redisClient.keys('loggedInUser:*');
