@@ -154,8 +154,8 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
 });
 
 // Protected dashboard route
-app.get('/dashboard.html', ensureAuthenticated, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+app.get('/dashboard', ensureAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
 });
 
 // Optional: Periodically clean up stale sessions
