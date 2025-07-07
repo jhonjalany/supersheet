@@ -9,11 +9,14 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Import Redis from ioredis
+const Redis = require('ioredis');
+
 // Full Redis URL from Upstash
 const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYWM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
 
 // Create Redis client
-const redisClient = new createClient({ url: redisUrl });
+const redisClient = new Redis(redisUrl);
 
 redisClient.on('error', (err) => {
   console.error('Redis error:', err.message);
