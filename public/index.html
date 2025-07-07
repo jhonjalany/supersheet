@@ -39,11 +39,15 @@
 
     // Ping server every minute to keep session alive
     setInterval(async () => {
-      const res = await fetch('/ping');
-      const data = await res.json();
-      if (!data.active) {
-        alert("You've been logged out due to inactivity.");
-        window.location.href = '/';
+      try {
+        const res = await fetch('/ping');
+        const data = await res.json();
+        if (!data.active) {
+          alert("You've been logged out due to inactivity.");
+          window.location.href = '/';
+        }
+      } catch (err) {
+        console.error('Ping failed:', err);
       }
     }, 60000);
   </script>
