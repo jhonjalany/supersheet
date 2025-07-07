@@ -50,7 +50,7 @@ async function singleUserOnly(req, res, next) {
     const activeSession = await redisClient.get('activeSession');
 
     if (activeSession && activeSession !== currentSessionId) {
-      return res.status(403).send("Another user is already logged in.");
+      return res.status(403).json({ error: "Another user is already logged in." });
     }
 
     // Set this session as active if none is set
