@@ -1,8 +1,9 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
+const session = require('express-session');
 const request = require('request-promise-native');
 const path = require('path');
+const { setSession, getSession, clearSession } = require('./sessions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,16 +13,36 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// In-memory login state
+// Session setup
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 30 * 60 * 1000 } // 30 minutes
+}));
+
+// Track login
 let loggedInUser = null;
-let lastActiveTime = null;
 
 // Middleware to allow only one login
 function singleUserOnly(req, res, next) {
-  if (loggedInUser !== null) {
+  const currentSession = req.sessionID;
+  const activeSession = getSession();
+
+  if (activeSession && activeSession !== currentSession) {
     return res.status(403).send("Another user is already logged in.");
   }
+
   next();
+}
+
+// Middleware to check authentication
+function ensureAuthenticated(req, res, next) {
+  if (req.session.email) {
+    req.session.lastActive = Date.now();
+    return next();
+  }
+  res.redirect('/');
 }
 
 // Login route
@@ -36,9 +57,11 @@ app.post('/login', singleUserOnly, async (req, res) => {
     });
 
     if (response && response.success === true) {
+      setSession(req.sessionID);
       loggedInUser = email;
-      lastActiveTime = Date.now();
-      res.json({ redirect: "/dashboard.html" }); // Change to your hosted site
+      req.session.email = email;
+      req.session.lastActive = Date.now();
+      res.json({ redirect: "/dashboard.html" });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
@@ -50,26 +73,35 @@ app.post('/login', singleUserOnly, async (req, res) => {
 
 // Logout route
 app.get('/logout', (req, res) => {
-  loggedInUser = null;
-  res.redirect('/');
+  req.session.destroy(() => {
+    clearSession();
+    res.redirect('/');
+  });
 });
 
 // Activity tracker
 app.get('/ping', (req, res) => {
-  if (!loggedInUser) {
+  if (!req.session.email) {
     return res.json({ active: false });
   }
 
   const now = Date.now();
-  const inactiveTime = (now - lastActiveTime) / 60000; // in minutes
+  const inactiveTime = (now - req.session.lastActive) / 60000; // in minutes
 
   if (inactiveTime > 30) {
-    loggedInUser = null;
-    return res.json({ active: false });
+    req.session.destroy(() => {
+      clearSession();
+      return res.json({ active: false });
+    });
   } else {
-    lastActiveTime = now;
-    res.json({ active: true, user: loggedInUser });
+    req.session.lastActive = now;
+    res.json({ active: true });
   }
+});
+
+// Protected dashboard route
+app.get('/dashboard.html', ensureAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 // Start server
