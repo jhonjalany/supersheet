@@ -9,15 +9,23 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Parse Upstash Redis URL
+
+
+const { Redis } = require('ioredis');
+
+// Full Redis URL from Upstash
 const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYCM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
 
 // Create Redis client
-const redisClient = createClient({ host: redisUrl });
+const redisClient = new Redis(redisUrl);
 
 // Optional: Log Redis connection errors
 redisClient.on('error', (err) => {
-  console.error('Redis error:', err);
+  console.error('Redis error:', err.message);
+});
+
+redisClient.on('connect', () => {
+  console.log('Connected to Redis');
 });
 
 // Session store setup with Redis
