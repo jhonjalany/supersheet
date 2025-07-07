@@ -1,39 +1,60 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const RedisStore = require('connect-redis')(session);
+const { createClient } = require('ioredis');
 const request = require('request-promise-native');
 const path = require('path');
-const { setSession, getSession, clearSession } = require('./sessions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Parse Upstash Redis URL
+const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYCM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
+
+// Create Redis client
+const redisClient = createClient({ host: redisUrl });
+
+// Optional: Log Redis connection errors
+redisClient.on('error', (err) => {
+  console.error('Redis error:', err);
+});
+
+// Session store setup with Redis
+app.use(session({
+  store: new RedisStore({ client: redisClient }),
+  secret: process.env.SESSION_SECRET || 'fallback-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 30 * 60 * 1000 } // 30 minutes
+}));
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session setup
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 30 * 60 * 1000 } // 30 minutes
-}));
-
-// Track login
-let loggedInUser = null;
-
 // Middleware to allow only one login
-function singleUserOnly(req, res, next) {
-  const currentSession = req.sessionID;
-  const activeSession = getSession();
+async function singleUserOnly(req, res, next) {
+  const currentSessionId = req.sessionID;
 
-  if (activeSession && activeSession !== currentSession) {
-    return res.status(403).send("Another user is already logged in.");
+  try {
+    const activeSession = await redisClient.get('activeSession');
+
+    if (activeSession && activeSession !== currentSessionId) {
+      return res.status(403).send("Another user is already logged in.");
+    }
+
+    // Set this session as active if none is set
+    if (!activeSession) {
+      await redisClient.set('activeSession', currentSessionId);
+    }
+
+    next();
+  } catch (err) {
+    console.error('Error checking active session:', err);
+    res.status(500).send('Internal Server Error');
   }
-
-  next();
 }
 
 // Middleware to check authentication
@@ -57,8 +78,6 @@ app.post('/login', singleUserOnly, async (req, res) => {
     });
 
     if (response && response.success === true) {
-      setSession(req.sessionID);
-      loggedInUser = email;
       req.session.email = email;
       req.session.lastActive = Date.now();
       res.json({ redirect: "/dashboard.html" });
@@ -73,8 +92,16 @@ app.post('/login', singleUserOnly, async (req, res) => {
 
 // Logout route
 app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    clearSession();
+  const sessionId = req.sessionID;
+
+  req.session.destroy(async (err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+    }
+
+    // Clear active session from Redis
+    await redisClient.del('activeSession');
+
     res.redirect('/');
   });
 });
@@ -89,8 +116,12 @@ app.get('/ping', (req, res) => {
   const inactiveTime = (now - req.session.lastActive) / 60000; // in minutes
 
   if (inactiveTime > 30) {
-    req.session.destroy(() => {
-      clearSession();
+    req.session.destroy(async (err) => {
+      if (err) {
+        console.error('Error destroying session:', err);
+      }
+
+      await redisClient.del('activeSession');
       return res.json({ active: false });
     });
   } else {
