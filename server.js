@@ -9,23 +9,22 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-
-
-const { Redis } = require('ioredis');
-
 // Full Redis URL from Upstash
 const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYWM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
 
 // Create Redis client
-const redisClient = new Redis(redisUrl);
+const redisClient = new createClient({ url: redisUrl });
 
-// Optional: Log Redis connection errors
 redisClient.on('error', (err) => {
   console.error('Redis error:', err.message);
 });
 
 redisClient.on('connect', () => {
   console.log('Connected to Redis');
+  // Clear previous active session on server start
+  redisClient.del('activeSession').then(() => {
+    console.log('Cleared previous active session.');
+  });
 });
 
 // Session store setup with Redis
@@ -42,25 +41,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware to allow only one login
+// Middleware to allow only one login at a time
 async function singleUserOnly(req, res, next) {
   const currentSessionId = req.sessionID;
+  const lockKey = 'loginLock';
+  const lockTTL = 10000; // 10 seconds
 
   try {
-    const activeSession = await redisClient.get('activeSession');
+    const acquired = await redisClient.set(lockKey, currentSessionId, 'PX', lockTTL, 'NX');
 
-    if (activeSession && activeSession !== currentSessionId) {
+    if (!acquired) {
       return res.status(403).json({ error: "Another user is already logged in." });
     }
 
-    // Set this session as active if none is set
-    if (!activeSession) {
-      await redisClient.set('activeSession', currentSessionId);
-    }
+    // Set active session
+    await redisClient.set('activeSession', currentSessionId);
+
+    // Extend session expiration
+    await redisClient.expire('activeSession', 30 * 60); // 30 mins
+
+    req.session.lockKey = lockKey;
 
     next();
+
   } catch (err) {
-    console.error('Error checking active session:', err);
+    console.error('Error acquiring lock:', err);
     res.status(500).send('Internal Server Error');
   }
 }
@@ -71,6 +76,11 @@ function ensureAuthenticated(req, res, next) {
     req.session.lastActive = Date.now();
     return next();
   }
+
+  if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+    return res.status(401).json({ active: false });
+  }
+
   res.redirect('/');
 }
 
@@ -81,6 +91,10 @@ app.post('/login', singleUserOnly, async (req, res) => {
   try {
     const response = await request.post({
       uri: process.env.N8N_WEBHOOK_URL,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       json: true,
       body: { email, password }
     });
@@ -115,11 +129,7 @@ app.get('/logout', (req, res) => {
 });
 
 // Activity tracker
-app.get('/ping', (req, res) => {
-  if (!req.session.email) {
-    return res.json({ active: false });
-  }
-
+app.get('/ping', ensureAuthenticated, (req, res) => {
   const now = Date.now();
   const inactiveTime = (now - req.session.lastActive) / 60000; // in minutes
 
