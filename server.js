@@ -2,15 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
-const { createClient } = require('ioredis');
+const Redis = require('ioredis'); // Correct import for ioredis
 const request = require('request-promise-native');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Import Redis from ioredis
-const Redis = require('ioredis');
 
 // Full Redis URL from Upstash
 const redisUrl = 'rediss://default:AdofAAIjcDE5NjdiNzIzNjhlNTk0MTZmYWM2ZGQ5NjFmYjA4MzEyYXAxMA@inviting-leech-55839.upstash.io:6379';
@@ -24,7 +21,7 @@ redisClient.on('error', (err) => {
 
 redisClient.on('connect', () => {
   console.log('Connected to Redis');
-  // Clear previous active session on server start
+  // Clear previous active session and stale user logins on server start
   redisClient.del('activeSession').then(() => {
     console.log('Cleared previous active session.');
   });
@@ -44,31 +41,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware to allow only one login at a time
+// Middleware to allow only one login per user at a time
 async function singleUserOnly(req, res, next) {
-  const currentSessionId = req.sessionID;
-  const lockKey = 'loginLock';
-  const lockTTL = 10000; // 10 seconds
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
 
   try {
-    const acquired = await redisClient.set(lockKey, currentSessionId, 'PX', lockTTL, 'NX');
+    // Check if this user is already logged in
+    const existingSession = await redisClient.get(`loggedInUser:${email}`);
 
-    if (!acquired) {
-      return res.status(403).json({ error: "Another user is already logged in." });
+    if (existingSession) {
+      return res.status(403).json({ error: "This account is already logged in on another device." });
     }
 
-    // Set active session
-    await redisClient.set('activeSession', currentSessionId);
-
-    // Extend session expiration
-    await redisClient.expire('activeSession', 30 * 60); // 30 mins
-
-    req.session.lockKey = lockKey;
-
     next();
-
   } catch (err) {
-    console.error('Error acquiring lock:', err);
+    console.error('Error checking user session:', err);
     res.status(500).send('Internal Server Error');
   }
 }
@@ -105,6 +93,10 @@ app.post('/login', singleUserOnly, async (req, res) => {
     if (response && response.success === true) {
       req.session.email = email;
       req.session.lastActive = Date.now();
+
+      // Mark this user as logged in
+      await redisClient.set(`loggedInUser:${email}`, req.sessionID);
+
       res.json({ redirect: "/dashboard.html" });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
@@ -117,14 +109,17 @@ app.post('/login', singleUserOnly, async (req, res) => {
 
 // Logout route
 app.get('/logout', (req, res) => {
-  const sessionId = req.sessionID;
+  const { email } = req.session;
 
   req.session.destroy(async (err) => {
     if (err) {
       console.error('Error destroying session:', err);
     }
 
-    // Clear active session from Redis
+    if (email) {
+      await redisClient.del(`loggedInUser:${email}`);
+    }
+
     await redisClient.del('activeSession');
 
     res.redirect('/');
@@ -137,12 +132,19 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
   const inactiveTime = (now - req.session.lastActive) / 60000; // in minutes
 
   if (inactiveTime > 30) {
+    const { email } = req.session;
+
     req.session.destroy(async (err) => {
       if (err) {
         console.error('Error destroying session:', err);
       }
 
+      if (email) {
+        await redisClient.del(`loggedInUser:${email}`);
+      }
+
       await redisClient.del('activeSession');
+
       return res.json({ active: false });
     });
   } else {
@@ -155,6 +157,19 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
 app.get('/dashboard.html', ensureAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
+
+// Optional: Periodically clean up stale sessions
+setInterval(async () => {
+  const allKeys = await redisClient.keys('loggedInUser:*');
+  for (const key of allKeys) {
+    const sessionId = await redisClient.get(key);
+    const sessionData = await redisClient.get(`session:${sessionId}`);
+
+    if (!sessionData) {
+      await redisClient.del(key); // Remove stale user login
+    }
+  }
+}, 60 * 60 * 1000); // Run every hour
 
 // Start server
 app.listen(PORT, () => {
