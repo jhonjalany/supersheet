@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+
+  <style>
+    /* Reset & Base Styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f5f7fa, #c3cfe2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 900px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-section {
+      background-color: #4f46e5;
+      color: white;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .info-section h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+
+    .info-section h2 {
+      font-weight: normal;
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+
+    .info-section button {
+      margin-top: 20px;
+      padding: 12px;
+      background-color: white;
+      color: #4f46e5;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .info-section button:hover {
+      background-color: #e0e0ff;
+    }
+
+    .login-container {
+      padding: 40px;
+      flex: 1.2;
+    }
+
+    .login-container h2 {
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+    }
+
+    .login-container form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .login-container input {
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .login-container button {
+      padding: 12px;
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .login-container button:hover {
+      background-color: #3730a3;
+    }
+
+    .error {
+      color: red;
+      margin-top: 15px;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .info-section {
+        padding: 30px;
+      }
+
+      .login-container {
+        padding: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="info-section">
+      <h1>5$</h1>
+      <h2>• Multi-Sheet Support</h2>
+      <h2>• Add Formula Column</h2>
+      <h2>• Dynamic Filtering</h2>
+      <h2>• Sorting</h2>
+      <h2>• Column Reordering</h2>
+      <h2>• Responsive UI</h2>
+      <h2>• File Upload</h2>
+      <h2>• Export Excel, CSV, Print</h2>
+      <button>Subscribe</button>
+    </div>
+    <div class="login-container">
+      <h2>Login to Access Resident Data</h2>
+      <form id="loginForm">
+        <input type="email" id="email" name="email" placeholder="Email" required />
+        <input type="password" id="password" name="password" placeholder="Password" required />
+        <button type="submit">Login</button>
+      </form>
+      <p id="error" class="error"></p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (data.redirect) {
+        window.location.href = data.redirect;
+      } else {
+        document.getElementById('error').textContent = data.error || "Login failed.";
+      }
+    });
+
+    // Ping server every minute to keep session alive
+    setInterval(async () => {
+      try {
+        const res = await fetch('/ping');
+        const data = await res.json();
+        if (!data.active) {
+          alert("You've been logged out due to inactivity.");
+          window.location.href = '/';
+        }
+      } catch (err) {
+        console.error('Ping failed:', err);
+      }
+    }, 60000);
+  </script>
+</body>
+</html>
