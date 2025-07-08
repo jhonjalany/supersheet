@@ -97,7 +97,7 @@ app.post('/login', singleUserOnly, async (req, res) => {
       // Mark this user as logged in
       await redisClient.set(`loggedInUser:${email}`, req.sessionID);
 
-      res.json({ redirect: "/dashboard.html" });
+      res.json({ redirect: "/views" });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
@@ -154,12 +154,12 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
 });
 
 // Protected dashboard route
-app.get('/dashboard', ensureAuthenticated, (req, res) => {
-  res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
+app.get('/views', ensureAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-app.get('/dashboard.html', (req, res) => {
-  res.redirect('/dashboard');
+app.get('/views', (req, res) => {
+  res.redirect('/views');
 });
 
 // Optional: Periodically clean up stale sessions
