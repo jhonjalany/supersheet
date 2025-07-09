@@ -2,9 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
-const Redis = require('ioredis'); // Correct import for ioredis
+const Redis = require('ioredis');
 const request = require('request-promise-native');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,12 +37,16 @@ app.use(session({
   cookie: { maxAge: 30 * 60 * 1000 } // 30 minutes
 }));
 
-// Serve static files
+// Serve static files — only public folder
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Serve static files — including the views folder
-app.use(express.static(path.join(__dirname, 'views')));
+
+// Middleware to prevent caching of protected content
+function noCache(req, res, next) {
+  res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
+  next();
+}
 
 // Middleware to allow only one login per user at a time
 async function singleUserOnly(req, res, next) {
@@ -156,12 +161,20 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
 });
 
 // Protected dashboard route
-app.get('/views', ensureAuthenticated, (req, res) => {
+app.get('/views', ensureAuthenticated, noCache, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-app.get('/views', (req, res) => {
-  res.redirect('/views');
+// Serve any view file under /views/ only if authenticated
+app.get('/views/*', ensureAuthenticated, noCache, (req, res) => {
+  const requestedFile = req.params[0]; // e.g. "dashboard.html"
+  const filePath = path.join(__dirname, 'views', requestedFile);
+
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('File not found');
+  }
 });
 
 // Optional: Periodically clean up stale sessions
