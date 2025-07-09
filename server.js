@@ -109,24 +109,6 @@ app.post('/login', singleUserOnly, async (req, res) => {
   }
 });
 
-app.get('/views/*', ensureAuthenticated, (req, res) => {
-  const requestedPath = req.params[0]; // Get everything after /views/
-  const filePath = path.join(__dirname, 'views', requestedPath);
-
-  // Prevent path traversal vulnerabilities
-  const normalizedPath = path.normalize(filePath);
-  if (normalizedPath.indexOf(path.join(__dirname, 'views')) !== 0) {
-    return res.status(403).send('Forbidden');
-  }
-
-  res.sendFile(filePath, (err) => {
-    if (err) {
-      console.error(`File not found: ${filePath}`);
-      res.status(404).send('Not Found');
-    }
-  });
-});
-
 // Logout route
 app.get('/logout', (req, res) => {
   const { email } = req.session;
@@ -143,6 +125,19 @@ app.get('/logout', (req, res) => {
     await redisClient.del('activeSession');
 
     res.redirect('/');
+  });
+});
+
+// Serve protected views files only if authenticated
+app.get('/views/*', ensureAuthenticated, (req, res) => {
+  const requestedPath = req.params[0]; // Get path after '/views/'
+  const fullPath = path.join(__dirname, 'views', requestedPath);
+
+  res.sendFile(fullPath, (err) => {
+    if (err) {
+      console.error("File send error:", err);
+      res.status(404).send("File not found");
+    }
   });
 });
 
@@ -178,7 +173,9 @@ app.get('/views', ensureAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Optional: Periodically clean up stale sessions
 setInterval(async () => {
