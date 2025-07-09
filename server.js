@@ -2,10 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
-const Redis = require('ioredis');
+const Redis = require('ioredis'); // Correct import for ioredis
 const request = require('request-promise-native');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,16 +36,12 @@ app.use(session({
   cookie: { maxAge: 30 * 60 * 1000 } // 30 minutes
 }));
 
-// Serve static files — only public folder
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Middleware to prevent caching of protected content
-function noCache(req, res, next) {
-  res.header('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0');
-  next();
-}
+// Serve static files — including the views folder
+//app.use(express.static(path.join(__dirname, 'views')));
 
 // Middleware to allow only one login per user at a time
 async function singleUserOnly(req, res, next) {
@@ -114,6 +109,24 @@ app.post('/login', singleUserOnly, async (req, res) => {
   }
 });
 
+app.get('/views/*', ensureAuthenticated, (req, res) => {
+  const requestedPath = req.params[0]; // Get everything after /views/
+  const filePath = path.join(__dirname, 'views', requestedPath);
+
+  // Prevent path traversal vulnerabilities
+  const normalizedPath = path.normalize(filePath);
+  if (normalizedPath.indexOf(path.join(__dirname, 'views')) !== 0) {
+    return res.status(403).send('Forbidden');
+  }
+
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error(`File not found: ${filePath}`);
+      res.status(404).send('Not Found');
+    }
+  });
+});
+
 // Logout route
 app.get('/logout', (req, res) => {
   const { email } = req.session;
@@ -161,21 +174,11 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
 });
 
 // Protected dashboard route
-app.get('/views', ensureAuthenticated, noCache, (req, res) => {
+app.get('/views', ensureAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-// Serve any view file under /views/ only if authenticated
-app.get('/views/*', ensureAuthenticated, noCache, (req, res) => {
-  const requestedFile = req.params[0]; // e.g. "dashboard.html"
-  const filePath = path.join(__dirname, 'views', requestedFile);
 
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).send('File not found');
-  }
-});
 
 // Optional: Periodically clean up stale sessions
 setInterval(async () => {
