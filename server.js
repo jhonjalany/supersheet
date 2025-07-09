@@ -70,9 +70,12 @@ function ensureAuthenticated(req, res, next) {
     return next();
   }
 
-  // If it's an AJAX/XHR request (e.g. JS/CSS), respond with 401 JSON
-  if (req.xhr || req.headers.accept.includes('json')) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // If it's a JS/CSS/asset request, return JSON error instead of HTML
+  const acceptsJSON = req.headers.accept && req.headers.accept.includes('json');
+  const isXHR = req.xhr;
+
+  if (isXHR || acceptsJSON) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   // Otherwise, redirect to login
@@ -132,20 +135,23 @@ app.get('/logout', (req, res) => {
 
 // Serve protected views files only if authenticated
 app.get('/views/*', ensureAuthenticated, (req, res) => {
-  const requestedPath = req.params[0]; // e.g. "l-function/l-st.js"
+  const requestedPath = req.params[0]; // e.g., l-function/l-st.js
   const fullPath = path.join(__dirname, 'views', requestedPath);
 
-  // Ensure correct MIME type
-  const options = {
-    headers: {
-      'Content-Type': 'application/javascript'
-    }
-  };
+  // Set correct MIME type based on file extension
+  let contentType = 'text/html';
+  if (requestedPath.endsWith('.js')) {
+    contentType = 'application/javascript';
+  } else if (requestedPath.endsWith('.css')) {
+    contentType = 'text/css';
+  }
 
-  res.sendFile(fullPath, options, (err) => {
+  res.header('Content-Type', contentType);
+
+  res.sendFile(fullPath, (err) => {
     if (err) {
-      console.error("File send error:", err.message);
-      res.status(404).send("File not found");
+      console.error(`File not found: ${requestedPath}`);
+      return res.status(404).send('File not found');
     }
   });
 });
