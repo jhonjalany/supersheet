@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Secure Transaction Submission</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #007BFF;
+      --primary-dark: #0056b3;
+      --background: #f9f9f9;
+      --white: #ffffff;
+      --error-color: #d63031;
+      --border-radius: 10px;
+      --transition-speed: 0.3s;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: var(--white);
+      width: 100%;
+      max-width: 450px;
+      padding: 30px 25px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 1.75rem;
+      color: #333;
+    }
+
+    .error {
+      color: var(--error-color);
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 0.95rem;
+      min-height: 1.2em;
+    }
+
+    .loading {
+      text-align: center;
+      color: var(--primary-color);
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      transition: var(--transition-speed) ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-speed) ease;
+    }
+
+    button:hover {
+      background-color: var(--primary-dark);
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        padding: 25px 20px;
+      }
+
+      h2 {
+        font-size: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Register Now</h2>
+
+    <!-- Error Message -->
+    <div id="error-message" class="error"></div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading" style="display: none;">Processing your request...</div>
+
+    <!-- Form -->
+    <form id="transaction-form">
+      <input type="text" id="transactionId" name="transactionId" placeholder="Transaction Number/ID" required />
+      <input type="email" id="email" name="email" placeholder="Email Address" required />
+      <input type="password" id="password" name="password" placeholder="Password" required minlength="6" />
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('transaction-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const transactionId = document.getElementById('transactionId').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const errorMessage = document.getElementById('error-message');
+      const loading = document.getElementById('loading');
+
+      // Clear previous messages
+      errorMessage.textContent = '';
+      loading.style.display = 'none';
+
+      // Basic Frontend Validation
+      if (!transactionId || !email || !password) {
+        errorMessage.textContent = 'All fields are required.';
+        return;
+      }
+
+      if (password.length < 6) {
+        errorMessage.textContent = 'Password must be at least 6 characters.';
+        return;
+      }
+
+      if (!validateEmail(email)) {
+        errorMessage.textContent = 'Please enter a valid email address.';
+        return;
+      }
+
+      // Show loading indicator
+      loading.style.display = 'block';
+
+      const payload = { transactionId, email, password };
+      const n8nWebhookUrl = 'https://n8n-app-gn6h.onrender.com/webhook/register'; // Replace this with your actual webhook URL
+
+      fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => {
+        loading.style.display = 'none';
+        if (data && data.success === true) {
+          window.location.href = '/'; // Redirect on success
+        } else {
+          errorMessage.textContent = 'Submission failed. Please Check Your Transaction Number/ID.';
+        }
+      })
+      .catch(error => {
+        loading.style.display = 'none';
+        console.error('Error:', error);
+        errorMessage.textContent = 'An error occurred. Please check your inputs and try again.';
+      });
+    });
+
+    function validateEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(String(email).toLowerCase());
+    }
+  </script>
+</body>
+</html>
