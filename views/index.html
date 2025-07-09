@@ -697,5 +697,15 @@ document.querySelectorAll('#addColumnModal .modal-close').forEach(el => {
 
 <script src="/views/prevent/preventkey.js"></script>
 <script src="/views/prevent/prevent.js"></script>
+
+  <script>
+  window.addEventListener('beforeunload', function (e) {
+    fetch('/logout', {
+      method: 'GET',
+      keepalive: true,
+      cache: 'no-cache'
+    });
+  });
+</script>
 </body>
 </html>
