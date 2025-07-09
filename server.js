@@ -70,10 +70,12 @@ function ensureAuthenticated(req, res, next) {
     return next();
   }
 
-  if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-    return res.status(401).json({ active: false });
+  // If it's an AJAX/XHR request (e.g. JS/CSS), respond with 401 JSON
+  if (req.xhr || req.headers.accept.includes('json')) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Otherwise, redirect to login
   res.redirect('/');
 }
 
@@ -130,12 +132,19 @@ app.get('/logout', (req, res) => {
 
 // Serve protected views files only if authenticated
 app.get('/views/*', ensureAuthenticated, (req, res) => {
-  const requestedPath = req.params[0]; // Get path after '/views/'
+  const requestedPath = req.params[0]; // e.g. "l-function/l-st.js"
   const fullPath = path.join(__dirname, 'views', requestedPath);
 
-  res.sendFile(fullPath, (err) => {
+  // Ensure correct MIME type
+  const options = {
+    headers: {
+      'Content-Type': 'application/javascript'
+    }
+  };
+
+  res.sendFile(fullPath, options, (err) => {
     if (err) {
-      console.error("File send error:", err);
+      console.error("File send error:", err.message);
       res.status(404).send("File not found");
     }
   });
@@ -172,6 +181,8 @@ app.get('/ping', ensureAuthenticated, (req, res) => {
 app.get('/views', ensureAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
+
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
