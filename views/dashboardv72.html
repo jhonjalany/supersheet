@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resident Information</title>
+  <link rel="stylesheet" href="b-role/b-role.css">
+  <!-- SheetJS Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js "></script>
+  <!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js "></script>
+<!-- Dragula CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.css " />
+
+<!-- Dragula JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.js "></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js "></script>
+
+<!-- html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js "></script>
+<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+
+</head>
+<body>
+<div class="container">
+  <h1>Resident Information</h1>
+  <div id="spinner" style="display: none;">
+    <div></div>
+    <p style="margin-top: 10px;">Saving changes...</p>
+  </div>
+  <div class="loading" id="loading">Loading data...</div>
+  <div class="table-container"> 
+    <div class="table-actions">
+      <button id="editBtn" class="action-btn no-print">Edit</button>
+      <button id="saveBtn" class="action-btn save-btn no-print" disabled>Save</button>
+      <button onclick="printSection()" class="no-print print-button">Print</button>
+      <button id="addRowBtn" class="action-btn no-print" style="background-color: #e67e22;">Add</button>
+      <button id="addColumnFormulaBtn" class="action-btn no-print" style="background-color: #f1c40f;">Add Formula Column</button>
+      <button id="addSheetBtn" class="action-btn no-print" style="background-color: #16a085;">Add Sheet</button>
+      <button id="conditionalFormatBtn" class="action-btn no-print" style="background-color: #8e44ad;">Conditional Format</button>
+      <button id="addDropdownColumnBtn" class="action-btn no-print" style="background-color: #e84393;">Add Dropdown Column</button>
+      <!-- Inside .table-actions -->
+      <input type="file" id="fileInput" accept=".xlsx,.xls" class="no-print" />
+      <select id="sheetSelector" class="no-print" style="display:none;"></select>
+      
+      <button id="downloadBtn" class="action-btn no-print" style="background-color: #9b59b6;">Download</button>
+      <button id="exportCsvBtn" class="action-btn no-print" style="background-color: #f39c12;">Export CSV</button>
+      <button id="exportPdfBtn" class="action-btn no-print" style="background-color: #92c952;">Export as PDF</button>
+      <button id="clearLocalStorageBtn" class="action-btn no-print" style="background-color: #e74c3c;">Clear</button>
+    </div>
+    <table id="residentTable" style="display: none;">
+  <thead>
+    <tr id="headerRow"></tr>
+    <tr id="filterRow"></tr>
+  </thead>
+  <tbody></tbody>
+  <tfoot id="summaryRow" class="no-print">
+    <!-- Footer for sum/average buttons -->
+  </tfoot>
+</table>
+  </div>
+  <div class="footer-info no-print">
+    <div id="entryInfo">Showing 0 to 0 of 0 entries</div>
+    <div>
+      Show
+      <select id="pageSize" class="page-length-select">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="30">30</option>
+        <option value="40">40</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+      entries
+    </div>
+    <ul class="pagination" id="pagination">
+      <li><button id="prevBtn" onclick="goToPage(currentPage - 1)" disabled>Previous</button></li>
+      <li><button id="nextBtn" onclick="goToPage(currentPage + 1)">Next</button></li>
+    </ul>
+  </div>
+</div>
+
+<!-- Add New Resident Modal -->
+<div id="addRowModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Add New Resident</h2>
+    <form id="addRowForm"></form>
+    <div class="modal-footer">
+      <button type="submit" form="addRowForm" class="action-btn save-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Confirm Deletion</h2>
+    <p>Are you sure you want to delete this resident?</p>
+    <div class="modal-footer">
+      <button id="confirmDeleteBtn" class="action-btn delete-btn">Delete</button>
+      <button id="cancelDeleteBtn" class="action-btn no-print">Cancel</button>
+    </div>
+  </div>
+</div>
+<!-- Add Formula Column Modal -->
+<div id="addColumnModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Add Custom Formula Column</h2>
+    <form id="addColumnForm">
+      <div class="form-group">
+        <label for="columnName">Column Name</label>
+        <input type="text" id="columnName" name="columnName" placeholder="Enter column name" required />
+      </div>
+      <div class="form-group">
+        <label for="columnFormula">Custom Formula</label>
+        <input type="text" id="columnFormula" name="columnFormula" placeholder="e.g. =A+B" />
+        <small>Available columns: <%= availableCols %></small>
+      </div>
+      <div class="form-group">
+        <strong>Sample Output:</strong>
+        <ul id="sampleOutput" style="list-style-type: none; padding-left: 0;"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="action-btn save-btn">Submit</button>
+        <button type="button" id="cancelAddColBtn" class="action-btn no-print">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Sheet Modal -->
+<div id="addSheetModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Add New Sheet</h2>
+    <form id="addSheetForm">
+      <div id="sheetColumnInputs">
+        <div class="form-group">
+          <label>Column Name</label>
+          <input type="text" class="column-name-input" placeholder="Enter column name" required />
+        </div>
+      </div>
+      <button type="button" id="addMoreColBtn" class="action-btn add-col-btn no-print">+ Add More</button>
+      <div class="modal-footer">
+        <button type="submit" class="action-btn save-btn">Create Sheet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Conditional Formatting Modal -->
+<div id="conditionalFormatModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Set Conditional Formatting</h2>
+    <form id="conditionalFormatForm">
+      <div class="form-group">
+        <label for="cfColumn">Select Column</label>
+        <select id="cfColumn" required></select>
+      </div>
+      <div class="form-group">
+        <label for="cfCondition">Condition</label>
+        <select id="cfCondition">
+          <option value="greater">Greater Than</option>
+          <option value="less">Less Than</option>
+          <option value="equal">Equal To</option>
+          <option value="contains">Contains Text</option>
+          <option value="today">Date is Today</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="cfValue">Value</label>
+        <input type="text" id="cfValue" placeholder="Enter value (number or text)" />
+      </div>
+      <div class="form-group">
+        <label for="cfColor">Background Color</label>
+        <input type="color" id="cfColor" value="#ffcccc" />
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="action-btn save-btn">Save Rule</button>
+        <button type="button" id="cancelCFBtn" class="action-btn no-print">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div style="flex:1; display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 25px;" class="no-print" >
+    <label><strong>X-Axis:</strong></label>
+    <select id="xAxisSelect" style="width:auto;"></select>
+
+    <label><strong>Y-Axis:</strong></label>
+    <select id="yAxisSelect" style="width:auto;"></select>
+
+    <label><strong>Chart Type:</strong></label>
+    <select id="chartTypeSelect" style="width:auto;">
+      <option value="bar">Bar</option>
+      <option value="line">Line</option>
+      <option value="pie">Pie</option>
+      <option value="doughnut">Doughnut</option>
+      <option value="radar">Radar</option>
+    </select>
+
+    <button id="generateChartBtn" class="action-btn no-print" style="background-color:#92c952;">Generate Chart</button>
+  </div>
+</div>
+
+<!-- Chart Container -->
+<div id="chartContainer" style="margin-top:30px; display:none; position:relative; width:100%; max-width:100%;" >
+  <div id="resizer" style="width:100%; height:400px; position:relative; resize:both; overflow:auto; border:1px solid #ccc; background:#fff;">
+    <canvas id="residentChart"></canvas>
+  </div>
+  <button id="resetChartSizeBtn" class="no-print"  style="margin-top:8px; padding:4px 12px; background:#9b59b6; color:white; border:none; border-radius:4px; cursor:pointer;">Reset Size</button>
+</div>
+
+<!-- Export PDF Options Modal -->
+<div id="pdfOptionsModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Customize PDF Style</h2>
+    <form id="pdfStyleForm">
+      <div class="form-group">
+        <label for="fontSize">Font Size</label>
+        <input type="number" id="fontSize" name="fontSize" value="10" min="6" max="24" />
+      </div>
+      <div class="form-group">
+        <label for="fontColor">Font Color</label>
+        <input type="color" id="fontColor" name="fontColor" value="#000000" />
+      </div>
+      <div class="form-group">
+        <label for="bgColor">Background Color</label>
+        <input type="color" id="bgColor" name="bgColor" value="#ffffff" />
+      </div>
+      <div class="form-group">
+        <label for="orientation">Orientation</label>
+        <select id="orientation">
+          <option value="p">Portrait</option>
+          <option value="l">Landscape</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="action-btn save-btn">Export</button>
+        <button type="button" id="cancelPdfBtn" class="action-btn no-print">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Add Dropdown Column Modal -->
+<div id="addDropdownColumnModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close">&times;</span>
+    <h2>Add Dropdown Column</h2>
+    <form id="addDropdownColumnForm">
+      <div class="form-group">
+        <label for="dropdownColumnName">Column Name</label>
+        <input type="text" id="dropdownColumnName" name="dropdownColumnName" placeholder="Enter column name" required />
+      </div>
+      <div id="dropdownOptionsContainer">
+        <div class="form-group">
+          <label>Dropdown Option</label>
+          <input type="text" class="dropdown-option-input" placeholder="Option 1" required />
+        </div>
+      </div>
+      <button type="button" id="addMoreOptionBtn" class="action-btn add-col-btn no-print">+ Add More Option</button>
+      <div class="modal-footer">
+        <button type="submit" class="action-btn save-btn">Create Dropdown Column</button>
+        <button type="button" id="cancelDropdownColBtn" class="action-btn no-print">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  async function saveDataToBackend() {
+    const currentSheet = document.getElementById('sheetSelector').value;
+
+  
+    const payload = {
+      sheetName: currentSheet,
+      residentData: residentData || []
+    };
+
+    try {
+      const response = await fetch('/api/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Success:", result);
+      alert("Data successfully saved to the backend!");
+    } catch (error) {
+      console.error("❌ Error saving data:", error);
+      alert("Failed to save data to the backend.");
+    }
+  }
+
+  // Hook it up to your "Save" button
+  document.getElementById('saveBtn')?.addEventListener('click', async () => {
+    await saveEditedData();        
+    await saveDataToBackend();     
+  });
+</script>
+
+
+<script src="a3-role/a3-role.js"></script>
+<script src="l-role/l-role.js"></script>
+<script src="y2-role/y2-role.js"></script>
+<script src="o3-role/o3-role.js"></script>
+<script src="j2-role/j2-role.js"></script>
+<script src="y-role/y-role.js"></script>
+<script src="r-role/r-role.js"></script>
+<script src="a2-role/a2-role.js"></script>
+<script src="m2-role/m2-role.js"></script>
+<script src="g-role/g-role.js"></script>
+<script src="o2-role/o2-role.js"></script>
+<script src="h2-role/h2-role.js"></script>
+<script src="n2-role/n2-role.js"></script>
+<script src="a-role/a-role.js"></script>
+<script src="m-role/m-role.js"></script>
+<script src="u-role/u-role.js"></script>
+<script src="d-role/d-role.js"></script>
+<script src="n-role/n-role.js"></script>
+<script src="o-role/o-role.js"></script>
+<script src="h-role/h-role.js"></script>
+<script src="j-role/j-role.js"></script>
+</body>
+</html>
