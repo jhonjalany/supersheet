@@ -88,5 +88,14 @@
     </a>
   </div>
 
+  <script>
+  window.addEventListener('beforeunload', function (e) {
+    fetch('/logout', {
+      method: 'GET',
+      keepalive: true,
+      cache: 'no-cache'
+    });
+  });
+</script>
 </body>
 </html>
