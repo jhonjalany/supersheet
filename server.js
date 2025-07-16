@@ -133,46 +133,26 @@ app.get('/logout', (req, res) => {
   });
 });
 
-// Serve protected views files/folders, supports folder/index.html
+// Serve protected views files only if authenticated
 app.get('/views/*', ensureAuthenticated, (req, res) => {
-  let requestedPath = req.params[0];
+  const requestedPath = req.params[0]; // e.g., l-function/l-st.js
+  const fullPath = path.join(__dirname, 'views', requestedPath);
 
-  // If no file extension and no trailing slash, redirect to add slash
-  if (!path.extname(requestedPath) && !req.path.endsWith('/')) {
-    return res.redirect(301, req.path + '/');
+  // Set correct MIME type based on file extension
+  let contentType = 'text/html';
+  if (requestedPath.endsWith('.js')) {
+    contentType = 'application/javascript';
+  } else if (requestedPath.endsWith('.css')) {
+    contentType = 'text/css';
   }
 
-  let fullPath = path.join(__dirname, 'views', requestedPath);
+  res.header('Content-Type', contentType);
 
-  // If path ends with /, try to serve index.html inside that folder
-  if (req.path.endsWith('/')) {
-    fullPath = path.join(fullPath, 'index.html');
-    requestedPath = path.join(requestedPath, 'index.html');
-  }
-
-  // Check if it's a directory and serve index.html automatically
-  fs.stat(fullPath, (err, stats) => {
-    if (!err && stats.isDirectory()) {
-      fullPath = path.join(fullPath, 'index.html');
-      requestedPath = path.join(requestedPath, 'index.html');
+  res.sendFile(fullPath, (err) => {
+    if (err) {
+      console.error(`File not found: ${requestedPath}`);
+      return res.status(404).send('File not found');
     }
-
-    // Set correct MIME type based on file extension
-    let contentType = 'text/html';
-    if (requestedPath.endsWith('.js')) {
-      contentType = 'application/javascript';
-    } else if (requestedPath.endsWith('.css')) {
-      contentType = 'text/css';
-    }
-
-    res.header('Content-Type', contentType);
-
-    res.sendFile(fullPath, (err) => {
-      if (err) {
-        console.error(`File not found: ${requestedPath}`);
-        return res.status(404).send('File not found');
-      }
-    });
   });
 });
 
