@@ -88,13 +88,39 @@
     </a>
   </div>
 
-  <script>
+<script>
+  let isNavigating = false;
+
+  // Detect clicks on links
+  document.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A' && e.target.href) {
+      const linkUrl = new URL(e.target.href);
+      const currentDomain = window.location.hostname;
+
+      // Check if the link is navigating away from the current domain
+      if (linkUrl.hostname !== current_domain || linkUrl.pathname.startsWith('/')) {
+        isNavigating = true;
+      }
+    }
+  });
+
+  // Handle beforeunload
   window.addEventListener('beforeunload', function (e) {
-    fetch('/logout', {
-      method: 'GET',
-      keepalive: true,
-      cache: 'no-cache'
-    });
+    if (isNavigating) {
+      isNavigating = false; // Reset flag
+      return;
+    }
+
+    // Use sendBeacon if available (more reliable than fetch)
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/logout');
+    } else {
+      fetch('/logout', {
+        method: 'GET',
+        keepalive: true,
+        cache: 'no-cache'
+      });
+    }
   });
 </script>
 </body>
