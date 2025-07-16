@@ -104,7 +104,7 @@ app.post('/login', singleUserOnly, async (req, res) => {
       // Mark this user as logged in
       await redisClient.set(`loggedInUser:${email}`, req.sessionID);
 
-      res.json({ redirect: "/views" });
+      res.json({ redirect: "/views/*" });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
