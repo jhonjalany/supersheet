@@ -274,45 +274,6 @@
   </div>
 </div>
 
-<script>
-  async function saveDataToBackend() {
-    const currentSheet = document.getElementById('sheetSelector').value;
-
-  
-    const payload = {
-      sheetName: currentSheet,
-      residentData: residentData || []
-    };
-
-    try {
-      const response = await fetch('/api/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log("✅ Success:", result);
-      alert("Data successfully saved to the backend!");
-    } catch (error) {
-      console.error("❌ Error saving data:", error);
-      alert("Failed to save data to the backend.");
-    }
-  }
-
-  // Hook it up to your "Save" button
-  document.getElementById('saveBtn')?.addEventListener('click', async () => {
-    await saveEditedData();        
-    await saveDataToBackend();     
-  });
-</script>
-
 
 <script src="a3-role/a3-role.js"></script>
 <script src="l-role/l-role.js"></script>
