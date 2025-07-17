@@ -339,6 +339,12 @@
   padding: 6px;
   box-sizing: border-box;
 }
+.advanced-filter {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
 </style>
   
 </head>
@@ -369,6 +375,11 @@
       <button id="exportPdfBtn" class="action-btn no-print" style="background-color: #92c952;">Export as PDF</button>
       <button id="clearLocalStorageBtn" class="action-btn no-print" style="background-color: #e74c3c;">Clear</button>
     </div>
+    <div class="advanced-filter no-print">
+  <input type="text" id="advancedFilterInput" placeholder='e.g., Age > 30' style="width: 80%; padding: 8px;" />
+  <button id="advancedSearchBtn" class="action-btn no-print">Search</button>
+  <button id="resetAdvancedFilterBtn" class="action-btn no-print" style="background-color: #7f8c8d;">Reset</button>
+</div>
     <table id="residentTable" style="display: none;">
   <thead>
     <tr id="headerRow"></tr>
