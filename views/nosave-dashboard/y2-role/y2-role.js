@@ -93,4 +93,59 @@ document.getElementById('addMoreOptionBtn').addEventListener('click', () => {
 });
 
 
+//----------------------------------------------advance search-----------------
+
+
+function evaluateCondition(expr, row) {
+  // Replace column names with values from row
+  const safeExpr = expr.replace(/([a-zA-Z_][a-zA-Z0-9_]*)/g, match => {
+    const val = row[match];
+    if (typeof val === 'string') {
+      return `"${val}"`;
+    }
+    return isNaN(val) ? `"${val}"` : parseFloat(val);
+  });
+  try {
+    // Use Function constructor safely
+    return Function('"use strict";return (' + safeExpr + ')')();
+  } catch (e) {
+    throw new Error("Error evaluating condition: " + e.message);
+  }
+}
+
+
+
+
+
+
+
+document.getElementById('advancedSearchBtn').addEventListener('click', function () {
+  if (isEditing) disableEditing();
+  const expr = document.getElementById('advancedFilterInput').value.trim();
+  if (!expr) {
+    alert("Please enter a valid condition.");
+    return;
+  }
+  try {
+    // Apply filter
+    filteredData = residentData.filter(row => evaluateCondition(expr, row));
+    currentPage = 1;
+    renderTable();
+  } catch (e) {
+    alert("Invalid expression: " + e.message);
+  }
+});
+
+document.getElementById('resetAdvancedFilterBtn').addEventListener('click', function () {
+  document.getElementById('advancedFilterInput').value = '';
+  filteredData = [...residentData];
+  currentPage = 1;
+  sortColumn = null;
+  sortDirection = 'asc';
+  renderTable();
+});
+
+
+
+
 
