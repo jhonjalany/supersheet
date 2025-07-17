@@ -1,6 +1,7 @@
 
 
 function renderTable() {
+  document.querySelectorAll('#residentTable tbody tr').forEach(r => r.classList.remove('row-selected'));
   const tbody = document.querySelector('#residentTable tbody');
   const entryInfo = document.getElementById('entryInfo');
   const prevBtn = document.getElementById('prevBtn');
