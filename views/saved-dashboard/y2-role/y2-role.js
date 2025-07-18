@@ -80,9 +80,10 @@ function renderFormulaSamples() {
 
 //----------------------------------------------advance search-----------------
 
-
 function evaluateCondition(expr, row) {
-  // Replace column names with values from row
+  // Replace logical keywords with JS operators
+  expr = expr.replace(/\bAND\b/g, '&&').replace(/\bOR\b/g, '||');
+
   const safeExpr = expr.replace(/([a-zA-Z_][a-zA-Z0-9_]*)/g, match => {
     const val = row[match];
     if (typeof val === 'string') {
@@ -90,14 +91,13 @@ function evaluateCondition(expr, row) {
     }
     return isNaN(val) ? `"${val}"` : parseFloat(val);
   });
+
   try {
-    // Use Function constructor safely
     return Function('"use strict";return (' + safeExpr + ')')();
   } catch (e) {
     throw new Error("Error evaluating condition: " + e.message);
   }
 }
-
 
 
 
