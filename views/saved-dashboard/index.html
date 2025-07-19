@@ -372,6 +372,7 @@
       <button id="exportCsvBtn" class="action-btn no-print" style="background-color: #f39c12;">Export CSV</button>
       <button id="exportPdfBtn" class="action-btn no-print" style="background-color: #92c952;">Export as PDF</button>
       <button id="clearLocalStorageBtn" class="action-btn no-print" style="background-color: #e74c3c;">Clear</button>
+      <button id="logoutBtn" class="action-btn no-print" style="background-color: #7f8c8d;">Logout</button>
     </div>
     <div class="advanced-filter no-print">
   <input type="text" id="advancedFilterInput" placeholder='e.g., Age > 30' style="width: 80%; padding: 8px;" />
@@ -602,6 +603,14 @@
     </form>
   </div>
 </div>
+
+<script>
+  document.getElementById("logoutBtn").addEventListener("click", function () {
+    // Example: Redirect to a logout endpoint or login page
+    window.location.href = "/logout"; // Change this to your actual logout URL
+  });
+</script>
+  
 <script src="/views/saved-dashboard/all-role/all-role.js"></script>
 <script src="/views/saved-dashboard/r3-role/r3-role.js"></script>
 <script src="/views/saved-dashboard/o2-role/o2-role.js"></script>
