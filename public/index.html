@@ -144,6 +144,13 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+    .info-section button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
   </style>
 </head>
 <body>
@@ -160,8 +167,14 @@
       <h2>• Responsive UI</h2>
       <h2>• File Upload</h2>
       <h2>• Export Excel, CSV, Print</h2>
-      <button>Subscribe</button>
-      <button onclick= "window.location.href = '/register'">Register</button>
+      <button type="button" id="subscribeBtn">
+        Subscribe
+        <div id="subscribeSpinner" class="spinner" style="display: none;"></div>
+      </button>
+      <button type="button" id="registerBtn">
+        Register
+        <div id="registerSpinner" class="spinner" style="display: none;"></div>
+</button>
     </div>
     <div class="login-container">
       <h2>Login</h2>
@@ -222,6 +235,42 @@
   }
 });
 
+
+
+    document.getElementById('subscribeBtn').addEventListener('click', function () {
+  const btn = this;
+  const spinner = btn.querySelector('.spinner');
+  const text = btn.textContent.replace(" ", "").trim(); // Get original text
+
+  // Show spinner and disable button
+  spinner.style.display = 'inline-block';
+  btn.textContent = 'Processing...';
+  btn.disabled = true;
+
+  // Simulate loading (or redirect after delay)
+  setTimeout(() => {
+    window.location.href = '/subscribe'; // Replace with your actual subscribe link
+  }, 1000);
+});
+
+document.getElementById('registerBtn').addEventListener('click', function () {
+  const btn = this;
+  const spinner = btn.querySelector('.spinner');
+  const text = btn.textContent.replace(" ", "").trim(); // Get original text
+
+  // Show spinner and disable button
+  spinner.style.display = 'inline-block';
+  btn.textContent = 'Registering...';
+  btn.disabled = true;
+
+  // Simulate loading (or redirect after delay)
+  setTimeout(() => {
+    window.location.href = '/register'; // Replace with your actual register link
+  }, 1000);
+});
+
+
+    
     
     // Ping server every minute to keep session alive
     setInterval(async () => {
