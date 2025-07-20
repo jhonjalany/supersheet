@@ -36,6 +36,7 @@
       text-decoration: none;
       color: white;
       display: inline-block;
+      transition: background-color 0.3s ease;
     }
 
     .button:hover::after {
@@ -60,6 +61,23 @@
 
     .small-dashboard {
       background-color: #27ae60;
+    }
+
+    /* Spinner styles */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     @media (max-width: 600px) {
@@ -88,40 +106,67 @@
     </a>
   </div>
 
-<script>
-  let isNavigating = false;
+  <!-- Loading Spinner Template -->
+  <template id="spinner-template">
+    <span class="spinner"></span>
+  </template>
 
-  // Detect clicks on links
-  document.addEventListener('click', function (e) {
-    if (e.target.tagName === 'A' && e.target.href) {
-      const linkUrl = new URL(e.target.href);
-      const currentDomain = window.location.hostname;
+  <script>
+    let isNavigating = false;
 
-      // Check if the link is navigating away from the current domain
-      if (linkUrl.hostname !== current_domain || linkUrl.pathname.startsWith('/')) {
-        isNavigating = true;
+    // Handle link clicks
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest('a.button');
+      if (!link) return;
+
+      e.preventDefault(); // Prevent default navigation
+
+      const href = link.getAttribute('href');
+
+      // Prevent double click
+      if (link.classList.contains('loading')) return;
+
+      // Add spinner
+      const spinner = document.getElementById('spinner-template').content.cloneNode(true);
+      link.textContent = ''; // Clear text
+      link.appendChild(spinner);
+      link.classList.add('loading');
+
+      // Simulate loading delay before navigating
+      setTimeout(() => {
+        window.location.href = href;
+      }, 1000); // Adjust delay as needed
+    });
+
+    // Detect navigation for beforeunload
+    document.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A' && e.target.href) {
+        const linkUrl = new URL(e.target.href);
+        const currentDomain = window.location.hostname;
+
+        if (linkUrl.hostname !== currentDomain || linkUrl.pathname.startsWith('/')) {
+          isNavigating = true;
+        }
       }
-    }
-  });
+    });
 
-  // Handle beforeunload
-  window.addEventListener('beforeunload', function (e) {
-    if (isNavigating) {
-      isNavigating = false; // Reset flag
-      return;
-    }
+    // Handle beforeunload
+    window.addEventListener('beforeunload', function (e) {
+      if (isNavigating) {
+        isNavigating = false; // Reset flag
+        return;
+      }
 
-    // Use sendBeacon if available (more reliable than fetch)
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon('/logout');
-    } else {
-      fetch('/logout', {
-        method: 'GET',
-        keepalive: true,
-        cache: 'no-cache'
-      });
-    }
-  });
-</script>
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/logout');
+      } else {
+        fetch('/logout', {
+          method: 'GET',
+          keepalive: true,
+          cache: 'no-cache'
+        });
+      }
+    });
+  </script>
 </body>
 </html>
