@@ -80,17 +80,7 @@ document.getElementById('addDropdownColumnBtn').addEventListener('click', () => 
   document.getElementById('addDropdownColumnModal').style.display = 'block';
 });
 
-document.getElementById('addMoreOptionBtn').addEventListener('click', () => {
-  const container = document.getElementById('dropdownOptionsContainer');
-  const count = container.querySelectorAll('.form-group').length + 1;
-  const group = document.createElement('div');
-  group.className = 'form-group';
-  group.innerHTML = `
-    <label>Dropdown Option</label>
-    <input type="text" class="dropdown-option-input" placeholder="Option ${count}" required />
-  `;
-  container.appendChild(group);
-});
+
 
 
 //----------------------------------------------advance search-----------------
